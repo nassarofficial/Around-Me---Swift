@@ -10,6 +10,8 @@
 import UIKit
 import CoreLocation
 import MapKit
+import Alamofire
+import SwiftyJSON
 
 class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
     let locationManager = CLLocationManager()
@@ -17,7 +19,8 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
     @IBOutlet weak var _mapView: MKMapView!
     var locations = [Place]()
     var currentLocation : CLLocation?
-    
+    var datas: [JSON] = []
+
     override func viewDidLoad() {
         super.viewDidLoad()
         let authStatus : CLAuthorizationStatus = CLLocationManager.authorizationStatus()
@@ -87,12 +90,29 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
     }
     
     func randomLocation(location:CLLocation, number:Int) {
-        for _ in 1...number {
-            var newLocation = CLLocation(latitude: location.coordinate.latitude + 0.005 * Double.random(min: -1.0, max: 1.0) , longitude: location.coordinate.longitude + 0.005 * Double.random(min: -1.0, max: 1.0))
-            var place = Place(_location: newLocation!, _reference: "_reference", _placeName: "Nio Nguyen's home", _address: "_address", _phoneNumber: "_phoneNumber", _website: "_website")
-            locations.append(place)
+        Alamofire.request(.GET, "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=\(location.coordinate.latitude),\(location.coordinate.longitude)&radius=1000&key=APIKEY").responseJSON { (request, response, json, error) in
+            if json != nil {
+                var jsonObj = JSON(json!)
+                if let data = jsonObj["results"].arrayValue as [JSON]?{
+                    self.datas = data
+                }
+                for var i = 0; i < self.datas.count; i++
+                {
+                    let data = self.datas[i]
+
+                  // var MomentaryLatitude = (self.datas[i]["location"]["lat"].string! as NSString).doubleValue
+                    
+                    var newLocation = CLLocation(latitude: self.datas[i]["geometry"]["location"]["lat"].doubleValue, longitude: self.datas[i]["geometry"]["location"]["lng"].doubleValue)
+                    var place = Place(_location: newLocation!, _reference: "_reference", _placeName: data["name"].string!, _address: "test", _phoneNumber: "_phoneNumber", _website: "_website")
+                    self.locations.append(place)
+                    
+                }
+                self.showLocations()
+
+            }
         }
-        showLocations()
+
+      
     }
 
     @IBAction func addLoctionAction() {
